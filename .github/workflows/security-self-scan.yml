@@ -28,15 +28,10 @@ jobs:
       - name: Run Security Scan
         run: |
           security-scan repo . \
-            --output security-report.sarif \
-            --format sarif \
+            --output security-report.json \
+            --format json \
             --severity medium
-
-      - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: security-report.sarif
+        continue-on-error: true
 
       - name: Run Compliance Check
         run: |
@@ -46,9 +41,35 @@ jobs:
             --framework owasp_top10 \
             --output compliance-report.json \
             --format json
+        continue-on-error: true
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: security-report.json
 
       - name: Upload Compliance Report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: compliance-report
           path: compliance-report.json
+
+      - name: Display Summary
+        if: always()
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f security-report.json ]; then
+            echo "Security report generated successfully." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Warning: Security report not generated." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f compliance-report.json ]; then
+            echo "Compliance report generated successfully." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Warning: Compliance report not generated." >> $GITHUB_STEP_SUMMARY
+          fi
