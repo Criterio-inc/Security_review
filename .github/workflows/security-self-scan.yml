@@ -1,0 +1,54 @@
+name: Security Self-Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Körs varje måndag kl 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Security Toolkit
+        run: pip install -e .
+
+      - name: Run Security Scan
+        run: |
+          security-scan repo . \
+            --output security-report.sarif \
+            --format sarif \
+            --severity medium
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: security-report.sarif
+
+      - name: Run Compliance Check
+        run: |
+          security-scan repo . \
+            --framework gdpr \
+            --framework nis2 \
+            --framework owasp_top10 \
+            --output compliance-report.json \
+            --format json
+
+      - name: Upload Compliance Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-report
+          path: compliance-report.json
