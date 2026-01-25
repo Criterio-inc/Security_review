@@ -2,6 +2,36 @@
 
 En omfattande säkerhetsgranskningsverktygslåda för kod, repositories och webbapplikationer. Fullt kompatibel med EU- och svenska säkerhetsstandarder.
 
+---
+
+## Snabbstart för nybörjare (Claude Code Desktop)
+
+**Steg 1:** Ladda ner Security Toolkit
+```bash
+git clone https://github.com/Criterio-inc/Security_review.git
+```
+
+**Steg 2:** Öppna Claude Code Desktop och välj ditt projekt
+- Starta Claude Code Desktop
+- Öppna mappen för projektet du vill säkerhetsgranska
+
+**Steg 3:** Skriv i chatten:
+```
+Installera Security Toolkit från ~/Security_review och kör en säkerhetsskanning på detta projekt
+```
+
+**Klart!** Claude installerar verktyget och kör skanningen åt dig.
+
+### Alternativa kommandon du kan använda:
+```
+"Skanna min kod efter säkerhetsproblem"
+"Gör en GDPR-granskning av projektet"
+"Hitta läckta API-nycklar i koden"
+"Kör security-scan interactive"
+```
+
+---
+
 ## Funktioner
 
 ### Agenter och Skanningstyper
