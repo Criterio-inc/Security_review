@@ -61,11 +61,13 @@ Skanna detta repo med security-scan
 ### Stödda Compliance-ramverk
 
 - **GDPR** (2016/679) - EU:s dataskyddsförordning
-- **NIS2** (2022/2555) - EU:s direktiv för nätverks- och informationssäkerhet
-- **OWASP Top 10** (2021) - De 10 vanligaste webbapplikationssårbarheterna
+- **NIS2 / Cybersäkerhetslagen** (SFS 2025:1506) - Sveriges implementering av NIS2
+- **OWASP Top 10** (2025) - De 10 vanligaste webbapplikationssårbarheterna
 - **ISO 27001** (2022) - Internationell standard för informationssäkerhet
-- **MSB Riktlinjer** - Myndigheten för samhällsskydd och beredskap
-- **EU Cyber Resilience Act** (2024) - EU:s cyberresilienslag
+- **MCF Riktlinjer** - Myndigheten för civilt försvar (f.d. MSB)
+- **EU Cyber Resilience Act** (2024/2847) - EU:s cyberresilienslag
+
+Se [COMPLIANCE_VERSIONS.md](COMPLIANCE_VERSIONS.md) för detaljerad versionsinformation.
 
 ## Installation
 
