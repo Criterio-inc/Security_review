@@ -1,0 +1,62 @@
+name: Årlig Compliance-granskning
+
+on:
+  schedule:
+    # Körs 1 januari kl 09:00 UTC varje år
+    - cron: '0 9 1 1 *'
+  workflow_dispatch:  # Tillåt manuell körning
+
+jobs:
+  create-review-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Skapa påminnelse-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date();
+            const year = today.getFullYear();
+
+            const issueBody = `## Årlig Compliance-granskning ${year}
+
+            Det är dags för den årliga granskningen av compliance-ramverk i Security Toolkit.
+
+            ### Checklista
+
+            Verifiera att följande ramverk är uppdaterade:
+
+            - [ ] **GDPR** (2016/679) - Kontrollera om nya riktlinjer publicerats
+            - [ ] **NIS2** (2022/2555) - Kontrollera implementeringsstatus i Sverige
+            - [ ] **OWASP Top 10** - Kontrollera om ny version släppts
+            - [ ] **ISO 27001** - Kontrollera om ny version publicerats
+            - [ ] **MSB Riktlinjer** - Kontrollera MSB:s senaste publikationer
+            - [ ] **EU Cyber Resilience Act** - Kontrollera implementeringsstatus
+
+            ### Resurser
+
+            - [EUR-Lex](https://eur-lex.europa.eu/) - EU-lagstiftning
+            - [OWASP](https://owasp.org/Top10/) - OWASP Top 10
+            - [MSB](https://www.msb.se/) - Myndigheten för samhällsskydd och beredskap
+            - [ISO](https://www.iso.org/) - ISO-standarder
+
+            ### Åtgärder vid uppdateringar
+
+            1. Uppdatera \`COMPLIANCE_VERSIONS.md\`
+            2. Uppdatera kontroller i \`security_toolkit/agents/compliance_checker.py\`
+            3. Uppdatera dokumentation i \`README.md\` om nödvändigt
+            4. Skapa PR med referens till denna issue
+
+            ---
+
+            *Denna issue skapades automatiskt av GitHub Actions.*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `📋 Årlig Compliance-granskning ${year}`,
+              body: issueBody,
+              labels: ['compliance', 'maintenance']
+            });
