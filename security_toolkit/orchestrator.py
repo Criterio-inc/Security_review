@@ -58,16 +58,24 @@ class SecurityOrchestrator:
         scan_types = self.config.scan_types
 
         if "all" in scan_types or "code" in scan_types or "sast" in scan_types:
-            agents.append(("SAST", CodeScannerAgent(self.config)))
+            agent = CodeScannerAgent(self.config)
+            agent.load_ignore_file(target_path)
+            agents.append(("SAST", agent))
 
         if "all" in scan_types or "secrets" in scan_types:
-            agents.append(("Secrets", SecretScannerAgent(self.config)))
+            agent = SecretScannerAgent(self.config)
+            agent.load_ignore_file(target_path)
+            agents.append(("Secrets", agent))
 
         if "all" in scan_types or "dependencies" in scan_types or "sca" in scan_types:
-            agents.append(("Dependencies", DependencyScannerAgent(self.config)))
+            agent = DependencyScannerAgent(self.config)
+            agent.load_ignore_file(target_path)
+            agents.append(("Dependencies", agent))
 
         if "all" in scan_types or "compliance" in scan_types:
-            agents.append(("Compliance", ComplianceCheckerAgent(self.config)))
+            agent = ComplianceCheckerAgent(self.config)
+            agent.load_ignore_file(target_path)
+            agents.append(("Compliance", agent))
 
         # Kör agenter parallellt
         tasks = [self._run_agent(name, agent, str(target_path)) for name, agent in agents]

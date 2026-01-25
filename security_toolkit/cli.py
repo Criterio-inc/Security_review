@@ -220,6 +220,150 @@ def full(
 
 
 @main.command()
+@click.option("--output", "-o", help="Sökväg för rapportfil")
+def interactive(output: Optional[str]):
+    """
+    Interaktiv säkerhetsgranskning med guidade frågor.
+
+    Ställer frågor för att anpassa skanningen efter dina behov.
+    """
+    print_banner()
+
+    console.print("\n[bold cyan]Välkommen till interaktiv säkerhetsgranskning![/bold cyan]\n")
+    console.print("Besvara frågorna nedan för att konfigurera din skanning.\n")
+
+    # Fråga 1: Vad ska skannas?
+    console.print("[bold]1. Vad vill du skanna?[/bold]")
+    console.print("   [1] Lokal kod/repository")
+    console.print("   [2] Webbapplikation (URL)")
+    console.print("   [3] Båda")
+    scan_choice = click.prompt("   Välj", type=click.Choice(["1", "2", "3"]), default="1")
+
+    repo_path = None
+    web_url = None
+
+    if scan_choice in ["1", "3"]:
+        repo_path = click.prompt("\n   Sökväg till repository", type=click.Path(exists=True), default=".")
+
+    if scan_choice in ["2", "3"]:
+        web_url = click.prompt("\n   URL till webbapplikation", type=str)
+
+    # Fråga 2: Vilka skanningstyper?
+    console.print("\n[bold]2. Vilka skanningar vill du köra?[/bold]")
+    console.print("   [1] Alla (rekommenderas)")
+    console.print("   [2] Endast kodgranskning (SAST)")
+    console.print("   [3] Endast hemlighetsdetektering")
+    console.print("   [4] Endast beroendesårbarheter")
+    console.print("   [5] Endast compliance-granskning")
+    scan_type_choice = click.prompt("   Välj", type=click.Choice(["1", "2", "3", "4", "5"]), default="1")
+
+    scan_type_map = {
+        "1": ["all"],
+        "2": ["sast"],
+        "3": ["secrets"],
+        "4": ["dependencies"],
+        "5": ["compliance"],
+    }
+    scan_types = scan_type_map[scan_type_choice]
+
+    # Fråga 3: Compliance-ramverk
+    console.print("\n[bold]3. Vilka compliance-ramverk är relevanta?[/bold]")
+    console.print("   [1] Alla (GDPR, NIS2, OWASP)")
+    console.print("   [2] Endast GDPR")
+    console.print("   [3] Endast NIS2")
+    console.print("   [4] Endast OWASP Top 10")
+    console.print("   [5] GDPR + NIS2 (EU-fokus)")
+    framework_choice = click.prompt("   Välj", type=click.Choice(["1", "2", "3", "4", "5"]), default="1")
+
+    framework_map = {
+        "1": ["gdpr", "nis2", "owasp_top10"],
+        "2": ["gdpr"],
+        "3": ["nis2"],
+        "4": ["owasp_top10"],
+        "5": ["gdpr", "nis2"],
+    }
+    frameworks = framework_map[framework_choice]
+
+    # Fråga 4: Allvarlighetsgrad
+    console.print("\n[bold]4. Vilken lägsta allvarlighetsgrad vill du se?[/bold]")
+    console.print("   [1] Alla fynd (info och uppåt)")
+    console.print("   [2] Låg och uppåt")
+    console.print("   [3] Medium och uppåt")
+    console.print("   [4] Endast hög och kritisk")
+    severity_choice = click.prompt("   Välj", type=click.Choice(["1", "2", "3", "4"]), default="2")
+
+    severity_map = {
+        "1": "info",
+        "2": "low",
+        "3": "medium",
+        "4": "high",
+    }
+    severity = severity_map[severity_choice]
+
+    # Fråga 5: Rapportformat
+    console.print("\n[bold]5. Vilket rapportformat vill du ha?[/bold]")
+    console.print("   [1] Endast terminal (ingen fil)")
+    console.print("   [2] HTML (visuell rapport)")
+    console.print("   [3] JSON (maskinläsbart)")
+    console.print("   [4] Markdown (dokumentation)")
+    format_choice = click.prompt("   Välj", type=click.Choice(["1", "2", "3", "4"]), default="2")
+
+    format_map = {
+        "1": None,
+        "2": "html",
+        "3": "json",
+        "4": "markdown",
+    }
+    output_format = format_map[format_choice]
+
+    if output_format and not output:
+        default_name = f"security-report-{datetime.now().strftime('%Y%m%d-%H%M%S')}.{output_format}"
+        output = click.prompt("\n   Filnamn för rapporten", default=default_name)
+
+    # Sammanfattning
+    console.print("\n" + "=" * 50)
+    console.print("[bold green]Konfiguration:[/bold green]")
+    console.print(f"  Mål: {repo_path or ''} {web_url or ''}")
+    console.print(f"  Skanningstyper: {', '.join(scan_types)}")
+    console.print(f"  Ramverk: {', '.join(frameworks)}")
+    console.print(f"  Allvarlighetsgrad: {severity}+")
+    console.print(f"  Rapport: {output or 'Endast terminal'}")
+    console.print("=" * 50 + "\n")
+
+    if not click.confirm("Starta skanningen?", default=True):
+        console.print("[yellow]Avbrutet.[/yellow]")
+        return
+
+    # Kör skanningen
+    config = ScanConfig(
+        compliance_frameworks=frameworks,
+        severity_threshold=Severity(severity),
+        scan_types=scan_types,
+        verbose=False,
+    )
+    orchestrator = SecurityOrchestrator(config)
+
+    console.print()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Utför säkerhetsgranskning...", total=None)
+
+        if scan_choice == "1":
+            asyncio.run(orchestrator.scan_repository(repo_path))
+        elif scan_choice == "2":
+            asyncio.run(orchestrator.scan_web_application(web_url))
+        else:
+            asyncio.run(orchestrator.scan_all(repo_path=repo_path, web_url=web_url))
+
+        progress.update(task, completed=True)
+
+    _display_results(orchestrator, output, output_format or "json")
+
+
+@main.command()
 def frameworks():
     """Visa information om stödda compliance-ramverk."""
     print_banner()

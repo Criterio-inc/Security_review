@@ -1,0 +1,58 @@
+# Security Toolkit Ignore File
+# ============================
+# Mönster för filer/mappar som ska exkluderas från säkerhetsskanning.
+# Syntaxen är samma som .gitignore (glob-mönster).
+
+# ---------------------------
+# Testfiler och fixtures
+# ---------------------------
+**/*test*.py
+**/*_test.py
+**/test_*.py
+**/*.spec.js
+**/*.test.js
+**/*.test.ts
+**/tests/**
+**/test/**
+**/__tests__/**
+**/fixtures/**
+
+# ---------------------------
+# Dokumentation och exempel
+# ---------------------------
+**/docs/**
+**/examples/**
+**/*.md
+**/*.rst
+
+# ---------------------------
+# Byggda filer och cache
+# ---------------------------
+**/dist/**
+**/build/**
+**/node_modules/**
+**/__pycache__/**
+**/*.egg-info/**
+**/.next/**
+**/.nuxt/**
+
+# ---------------------------
+# IDE och verktyg
+# ---------------------------
+**/.vscode/**
+**/.idea/**
+
+# ---------------------------
+# False positive-mönster
+# ---------------------------
+# Exkludera filer som innehåller säkerhetsregler/mönster
+# (för att undvika att scannern hittar sina egna detektionsmönster)
+**/security_toolkit/agents/secret_scanner.py
+**/security_toolkit/agents/code_scanner.py
+
+# ---------------------------
+# Rapporter
+# ---------------------------
+**/*-report.html
+**/*-report.json
+**/self-scan-*.html

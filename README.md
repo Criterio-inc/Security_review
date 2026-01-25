@@ -27,7 +27,7 @@ En omfattande säkerhetsgranskningsverktygslåda för kod, repositories och webb
 
 ```bash
 # Klona repositoryt
-git clone https://github.com/your-org/security-toolkit.git
+git clone https://github.com/Criterio-inc/Security_review.git
 cd security-toolkit
 
 # Installera med pip
@@ -38,6 +38,47 @@ pip install -e ".[dev]"
 ```
 
 ## Användning
+
+### Interaktivt läge (rekommenderas för nybörjare)
+
+```bash
+security-scan interactive
+```
+
+Detta startar en guidad genomgång där du svarar på frågor om:
+1. Vad ska skannas (kod, webb, eller båda)
+2. Vilka skanningstyper
+3. Vilka compliance-ramverk
+4. Allvarlighetsgrad
+5. Rapportformat
+
+---
+
+### Använda med Claude Code Desktop
+
+**Metod 1: Be Claude köra skanningen direkt**
+```
+"Kör en säkerhetsskanning på detta repository"
+"Skanna min kod efter säkerhetsproblem"
+"Gör en GDPR-compliance-granskning av projektet"
+```
+
+**Metod 2: Installera och kör själv**
+```
+"Installera security-toolkit och kör security-scan repo ."
+```
+
+**Metod 3: Interaktiv skanning via Claude**
+```
+"Kör security-scan interactive och hjälp mig välja rätt inställningar"
+```
+
+**Tips för Claude Code:**
+- Claude kan tolka resultaten och förklara vad de betyder
+- Be Claude föreslå åtgärder för varje fynd
+- Claude kan automatiskt fixa enkla säkerhetsproblem
+
+---
 
 ### CLI-kommandon
 
@@ -284,7 +325,28 @@ security_scan:
 
 ## Konfiguration
 
-Skapa `.security-toolkit.yaml` i projektets rot:
+### Ignore-fil (.security-toolkit-ignore)
+
+Skapa `.security-toolkit-ignore` i projektets rot för att exkludera filer från skanning:
+
+```gitignore
+# Testfiler
+**/*test*.py
+**/*.spec.js
+**/tests/**
+
+# Byggda filer
+**/dist/**
+**/node_modules/**
+
+# Dokumentation
+**/*.md
+
+# False positives (t.ex. säkerhetsregler)
+**/security_toolkit/agents/secret_scanner.py
+```
+
+### Konfigurationsfil (.security-toolkit.yaml)
 
 ```yaml
 exclude_patterns:
@@ -315,5 +377,5 @@ Bidrag välkomnas! Se [CONTRIBUTING.md](CONTRIBUTING.md) för riktlinjer.
 
 ## Support
 
-- Skapa en [GitHub Issue](https://github.com/your-org/security-toolkit/issues) för buggar
-- Diskutera nya funktioner i [Discussions](https://github.com/your-org/security-toolkit/discussions)
+- Skapa en [GitHub Issue](https://github.com/Criterio-inc/Security_review/issues) för buggar
+- Diskutera nya funktioner i [Discussions](https://github.com/Criterio-inc/Security_review/discussions)
