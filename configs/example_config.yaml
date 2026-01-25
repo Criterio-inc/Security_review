@@ -1,0 +1,54 @@
+# Security Toolkit - Exempelkonfiguration
+# =========================================
+# Kopiera denna fil till .security-toolkit.yaml i ditt projekt
+# och anpassa efter behov.
+
+# Mönster att exkludera från skanning
+exclude_patterns:
+  - "node_modules/**"
+  - ".git/**"
+  - "__pycache__/**"
+  - "*.min.js"
+  - "*.min.css"
+  - "dist/**"
+  - "build/**"
+  - "coverage/**"
+  - "*.test.js"
+  - "*.spec.js"
+  - "*_test.py"
+  - "test_*.py"
+
+# Mönster att inkludera (tomt = alla)
+include_patterns: []
+
+# Compliance-ramverk att granska mot
+# Tillgängliga: gdpr, nis2, owasp_top10, iso27001, msb, cyber_resilience_act
+compliance_frameworks:
+  - gdpr
+  - nis2
+  - owasp_top10
+
+# Minsta allvarlighetsgrad att rapportera
+# Tillgängliga: critical, high, medium, low, info
+severity_threshold: low
+
+# Skanningstyper att köra
+# Tillgängliga: sast, secrets, dependencies, compliance, web, all
+scan_types:
+  - all
+
+# Maximal katalogdjup att skanna
+max_depth: 10
+
+# Timeout i sekunder
+timeout_seconds: 3600
+
+# Antal parallella arbetare
+parallel_workers: 4
+
+# Standardformat för rapporter
+# Tillgängliga: json, html, markdown, sarif
+output_format: json
+
+# Visa detaljerad output
+verbose: false

@@ -1,0 +1,282 @@
+# Säkerhetsstandarder och ramverk för EU och Sverige
+# Security Standards and Frameworks for EU and Sweden
+
+standards:
+  gdpr:
+    name: "General Data Protection Regulation (GDPR)"
+    version: "2016/679"
+    description: "EU:s dataskyddsförordning"
+    requirements:
+      - id: "GDPR-7"
+        name: "Privacy by Design"
+        description: "Inbyggt dataskydd i systemdesign"
+        checks:
+          - "data_minimization"
+          - "purpose_limitation"
+          - "encryption_at_rest"
+          - "encryption_in_transit"
+      - id: "GDPR-25"
+        name: "Data Protection by Default"
+        description: "Dataskydd som standard"
+        checks:
+          - "consent_management"
+          - "data_retention_policy"
+          - "access_controls"
+      - id: "GDPR-32"
+        name: "Security of Processing"
+        description: "Säkerhet vid behandling"
+        checks:
+          - "pseudonymization"
+          - "encryption"
+          - "confidentiality"
+          - "integrity"
+          - "availability"
+          - "resilience"
+      - id: "GDPR-33"
+        name: "Breach Notification"
+        description: "Incidenthantering och rapportering"
+        checks:
+          - "logging_enabled"
+          - "audit_trail"
+          - "incident_response_plan"
+
+  nis2:
+    name: "NIS2 Directive"
+    version: "2022/2555"
+    description: "EU:s direktiv för nätverks- och informationssäkerhet"
+    requirements:
+      - id: "NIS2-21.2a"
+        name: "Risk Analysis"
+        description: "Riskanalys och säkerhetspolicyer"
+        checks:
+          - "risk_assessment"
+          - "security_policies"
+          - "asset_inventory"
+      - id: "NIS2-21.2b"
+        name: "Incident Handling"
+        description: "Incidenthantering"
+        checks:
+          - "incident_detection"
+          - "incident_response"
+          - "incident_reporting"
+      - id: "NIS2-21.2c"
+        name: "Business Continuity"
+        description: "Driftskontinuitet"
+        checks:
+          - "backup_management"
+          - "disaster_recovery"
+          - "crisis_management"
+      - id: "NIS2-21.2d"
+        name: "Supply Chain Security"
+        description: "Leverantörskedjesäkerhet"
+        checks:
+          - "dependency_scanning"
+          - "third_party_risk"
+          - "vendor_assessment"
+      - id: "NIS2-21.2e"
+        name: "Secure Development"
+        description: "Säker utveckling och underhåll"
+        checks:
+          - "secure_coding"
+          - "vulnerability_management"
+          - "patch_management"
+      - id: "NIS2-21.2f"
+        name: "Security Testing"
+        description: "Säkerhetstestning"
+        checks:
+          - "penetration_testing"
+          - "vulnerability_scanning"
+          - "security_audits"
+      - id: "NIS2-21.2g"
+        name: "Cryptography"
+        description: "Kryptografi"
+        checks:
+          - "encryption_standards"
+          - "key_management"
+          - "certificate_management"
+      - id: "NIS2-21.2h"
+        name: "Access Control"
+        description: "Åtkomstkontroll"
+        checks:
+          - "authentication"
+          - "authorization"
+          - "mfa_enabled"
+      - id: "NIS2-21.2i"
+        name: "Asset Management"
+        description: "Tillgångshantering"
+        checks:
+          - "asset_classification"
+          - "secure_communications"
+
+  owasp_top10:
+    name: "OWASP Top 10"
+    version: "2021"
+    description: "De 10 vanligaste säkerhetsriskerna för webbapplikationer"
+    requirements:
+      - id: "A01:2021"
+        name: "Broken Access Control"
+        description: "Bristande åtkomstkontroll"
+        checks:
+          - "idor_vulnerability"
+          - "privilege_escalation"
+          - "path_traversal"
+          - "cors_misconfiguration"
+      - id: "A02:2021"
+        name: "Cryptographic Failures"
+        description: "Kryptografiska brister"
+        checks:
+          - "weak_encryption"
+          - "sensitive_data_exposure"
+          - "insecure_transmission"
+      - id: "A03:2021"
+        name: "Injection"
+        description: "Injektionsattacker"
+        checks:
+          - "sql_injection"
+          - "xss"
+          - "command_injection"
+          - "ldap_injection"
+      - id: "A04:2021"
+        name: "Insecure Design"
+        description: "Osäker design"
+        checks:
+          - "threat_modeling"
+          - "secure_architecture"
+          - "defense_in_depth"
+      - id: "A05:2021"
+        name: "Security Misconfiguration"
+        description: "Felkonfiguration"
+        checks:
+          - "default_credentials"
+          - "unnecessary_features"
+          - "error_handling"
+          - "security_headers"
+      - id: "A06:2021"
+        name: "Vulnerable Components"
+        description: "Sårbara komponenter"
+        checks:
+          - "outdated_dependencies"
+          - "known_vulnerabilities"
+          - "unsupported_software"
+      - id: "A07:2021"
+        name: "Authentication Failures"
+        description: "Autentiseringsbrister"
+        checks:
+          - "weak_passwords"
+          - "credential_stuffing"
+          - "session_management"
+          - "brute_force_protection"
+      - id: "A08:2021"
+        name: "Software and Data Integrity"
+        description: "Integritetsbrister"
+        checks:
+          - "insecure_deserialization"
+          - "ci_cd_security"
+          - "update_integrity"
+      - id: "A09:2021"
+        name: "Logging and Monitoring"
+        description: "Bristande loggning"
+        checks:
+          - "insufficient_logging"
+          - "log_injection"
+          - "monitoring_gaps"
+      - id: "A10:2021"
+        name: "SSRF"
+        description: "Server-Side Request Forgery"
+        checks:
+          - "ssrf_vulnerability"
+          - "url_validation"
+
+  iso27001:
+    name: "ISO 27001:2022"
+    version: "2022"
+    description: "Internationell standard för informationssäkerhet"
+    requirements:
+      - id: "A.5"
+        name: "Organizational Controls"
+        description: "Organisatoriska kontroller"
+        checks:
+          - "security_policies"
+          - "roles_responsibilities"
+      - id: "A.6"
+        name: "People Controls"
+        description: "Personalkontroller"
+        checks:
+          - "security_awareness"
+          - "access_provisioning"
+      - id: "A.7"
+        name: "Physical Controls"
+        description: "Fysiska kontroller"
+        checks:
+          - "physical_security"
+          - "equipment_security"
+      - id: "A.8"
+        name: "Technological Controls"
+        description: "Tekniska kontroller"
+        checks:
+          - "endpoint_security"
+          - "network_security"
+          - "application_security"
+          - "secure_configuration"
+
+  msb_guidelines:
+    name: "MSB Riktlinjer"
+    version: "2024"
+    description: "Myndigheten för samhällsskydd och beredskaps riktlinjer"
+    requirements:
+      - id: "MSB-1"
+        name: "Systematiskt Informationssäkerhetsarbete"
+        description: "Systematiskt arbete med informationssäkerhet"
+        checks:
+          - "risk_management"
+          - "security_governance"
+          - "continuous_improvement"
+      - id: "MSB-2"
+        name: "Tekniska Säkerhetsåtgärder"
+        description: "Tekniska åtgärder för säkerhet"
+        checks:
+          - "malware_protection"
+          - "network_segmentation"
+          - "secure_configuration"
+
+  cyber_resilience_act:
+    name: "EU Cyber Resilience Act"
+    version: "2024"
+    description: "EU:s cyberresilienslag för produkter med digitala element"
+    requirements:
+      - id: "CRA-1"
+        name: "Security by Design"
+        description: "Säkerhet inbyggd i produktdesign"
+        checks:
+          - "secure_defaults"
+          - "minimal_attack_surface"
+          - "security_updates"
+      - id: "CRA-2"
+        name: "Vulnerability Handling"
+        description: "Sårbarhetshantering"
+        checks:
+          - "vulnerability_disclosure"
+          - "security_patches"
+          - "sbom_generation"
+
+severity_levels:
+  critical:
+    score_range: [9.0, 10.0]
+    description: "Kritisk - Kräver omedelbar åtgärd"
+    color: "red"
+  high:
+    score_range: [7.0, 8.9]
+    description: "Hög - Bör åtgärdas inom 24 timmar"
+    color: "orange"
+  medium:
+    score_range: [4.0, 6.9]
+    description: "Medium - Bör åtgärdas inom 7 dagar"
+    color: "yellow"
+  low:
+    score_range: [0.1, 3.9]
+    description: "Låg - Bör åtgärdas inom 30 dagar"
+    color: "blue"
+  info:
+    score_range: [0.0, 0.0]
+    description: "Information - Rekommendation"
+    color: "gray"
