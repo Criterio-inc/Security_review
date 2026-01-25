@@ -13,12 +13,29 @@ En säkerhetsgranskningsverktygslåda som skannar din kod efter säkerhetsproble
 cd Security_review
 pip install -e .
 
-# 2. Skanna ett projekt
-security-scan repo /sökväg/till/ditt/projekt
+# 2. Skanna ett projekt (interaktivt - svarar på frågor)
+security-scan interactive
 
-# 3. Se rapporten
+# 3. Eller direkt med kommando
 security-scan repo /sökväg/till/ditt/projekt --output rapport.html --format html
 ```
+
+---
+
+## Använda med Claude Code Desktop
+
+**Be Claude direkt:**
+```
+"Kör en säkerhetsskanning på detta projekt"
+"Granska min kod för GDPR-compliance"
+"Hitta säkerhetsproblem i min webbapp"
+```
+
+**Claude kan:**
+- Köra skanningen åt dig
+- Förklara vad varje fynd betyder
+- Föreslå hur du åtgärdar problemen
+- Automatiskt fixa enkla säkerhetsproblem
 
 ---
 

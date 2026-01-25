@@ -5,10 +5,33 @@ Basagent för säkerhetsgranskningar.
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Optional
 
 from security_toolkit.models import ScanConfig, ScanResult, Finding
+
+
+def load_ignore_patterns(target_path: Path) -> list[str]:
+    """
+    Ladda ignore-mönster från .security-toolkit-ignore fil.
+
+    Filen stöder:
+    - Glob-mönster (*.py, **/*.test.js)
+    - Kommentarer med #
+    - Tomma rader ignoreras
+    """
+    ignore_file = target_path / ".security-toolkit-ignore"
+    patterns = []
+
+    if ignore_file.exists():
+        for line in ignore_file.read_text().splitlines():
+            line = line.strip()
+            # Ignorera tomma rader och kommentarer
+            if line and not line.startswith("#"):
+                patterns.append(line)
+
+    return patterns
 
 
 class BaseAgent(ABC):
@@ -29,6 +52,11 @@ class BaseAgent(ABC):
         self.config = config or ScanConfig()
         self.agent_name = self.__class__.__name__
         self._findings: list[Finding] = []
+        self._ignore_patterns: list[str] = []
+
+    def load_ignore_file(self, target_path: Path) -> None:
+        """Ladda ignore-mönster från projektets .security-toolkit-ignore."""
+        self._ignore_patterns = load_ignore_patterns(target_path)
 
     @property
     @abstractmethod
@@ -73,17 +101,20 @@ class BaseAgent(ABC):
 
     def _should_exclude(self, path: str) -> bool:
         """Kontrollera om en sökväg ska exkluderas från skanning."""
-        from fnmatch import fnmatch
-
+        # Kolla config-mönster
         for pattern in self.config.exclude_patterns:
             if fnmatch(path, pattern):
                 return True
+
+        # Kolla .security-toolkit-ignore mönster
+        for pattern in self._ignore_patterns:
+            if fnmatch(path, pattern):
+                return True
+
         return False
 
     def _should_include(self, path: str) -> bool:
         """Kontrollera om en sökväg ska inkluderas i skanning."""
-        from fnmatch import fnmatch
-
         if not self.config.include_patterns:
             return True
 
