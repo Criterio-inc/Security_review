@@ -47,8 +47,10 @@
 # ---------------------------
 # Exkludera filer som innehåller säkerhetsregler/mönster
 # (för att undvika att scannern hittar sina egna detektionsmönster)
-**/security_toolkit/agents/secret_scanner.py
-**/security_toolkit/agents/code_scanner.py
+security_toolkit/agents/secret_scanner.py
+security_toolkit/agents/code_scanner.py
+**/secret_scanner.py
+**/code_scanner.py
 
 # ---------------------------
 # Rapporter

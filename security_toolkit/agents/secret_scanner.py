@@ -358,6 +358,10 @@ class SecretScannerAgent(BaseAgent):
                     # Hoppa över binärfiler
                     if self._is_binary(file_path):
                         continue
+                    # Kolla ignore-mönster
+                    rel_path = str(file_path.relative_to(target_path))
+                    if self._should_exclude(rel_path):
+                        continue
                     files.append(file_path)
 
         return files
