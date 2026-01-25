@@ -3,11 +3,13 @@ Compliance-granskningsagent för EU- och svenska standarder.
 
 Kontrollerar efterlevnad av:
 - GDPR (General Data Protection Regulation)
-- NIS2 (Network and Information Security Directive)
-- OWASP Top 10
-- ISO 27001
-- MSB Riktlinjer
-- EU Cyber Resilience Act
+- NIS2 / Cybersäkerhetslagen (SFS 2025:1506)
+- OWASP Top 10 (2025)
+- ISO 27001 (2022)
+- MCF Riktlinjer (Myndigheten för civilt försvar, f.d. MSB)
+- EU Cyber Resilience Act (2024/2847)
+
+Uppdaterad: 2026-01
 """
 
 import re
@@ -103,7 +105,7 @@ GDPR_CHECKS = {
     },
 }
 
-# NIS2-specifika kontroller
+# NIS2 / Cybersäkerhetslagen (SFS 2025:1506) - kontroller
 NIS2_CHECKS = {
     "incident_logging": {
         "patterns": [
@@ -115,9 +117,9 @@ NIS2_CHECKS = {
         ],
         "check_absence": True,
         "title": "Incidenthantering kan vara bristfällig",
-        "description": "Ingen synlig incidentloggning eller SIEM-integration. NIS2 art. 21.2(b) kräver incidenthantering.",
+        "description": "Ingen synlig incidentloggning eller SIEM-integration. Cybersäkerhetslagen/NIS2 kräver incidenthantering och rapportering till MCF.",
         "severity": Severity.MEDIUM,
-        "requirement_id": "NIS2-21.2b",
+        "requirement_id": "CSL-7",
         "requirement_name": "Incidenthantering",
     },
     "backup_mechanism": {
@@ -129,9 +131,9 @@ NIS2_CHECKS = {
         ],
         "check_absence": True,
         "title": "Backup-mekanism kan saknas",
-        "description": "Ingen synlig backup-implementation. NIS2 art. 21.2(c) kräver driftskontinuitet.",
+        "description": "Ingen synlig backup-implementation. Cybersäkerhetslagen kräver driftskontinuitet.",
         "severity": Severity.MEDIUM,
-        "requirement_id": "NIS2-21.2c",
+        "requirement_id": "CSL-8",
         "requirement_name": "Driftskontinuitet",
     },
     "access_control": {
@@ -146,9 +148,9 @@ NIS2_CHECKS = {
         ],
         "check_absence": True,
         "title": "Åtkomstkontroll kan vara bristfällig",
-        "description": "Ingen tydlig autentiseringsmekanism hittad. NIS2 art. 21.2(h) kräver åtkomstkontroll.",
+        "description": "Ingen tydlig autentiseringsmekanism hittad. Cybersäkerhetslagen kräver åtkomstkontroll.",
         "severity": Severity.HIGH,
-        "requirement_id": "NIS2-21.2h",
+        "requirement_id": "CSL-9",
         "requirement_name": "Åtkomstkontroll",
     },
     "mfa_implementation": {
@@ -162,9 +164,9 @@ NIS2_CHECKS = {
         ],
         "check_absence": True,
         "title": "Multifaktorautentisering kan saknas",
-        "description": "Ingen synlig MFA-implementation. NIS2 rekommenderar starkt MFA för känsliga system.",
+        "description": "Ingen synlig MFA-implementation. Cybersäkerhetslagen rekommenderar starkt MFA för känsliga system.",
         "severity": Severity.MEDIUM,
-        "requirement_id": "NIS2-21.2h",
+        "requirement_id": "CSL-10",
         "requirement_name": "Stark autentisering",
     },
     "vulnerability_scanning": {
@@ -179,15 +181,15 @@ NIS2_CHECKS = {
         "files": [".github/*", "Jenkinsfile", ".gitlab-ci.yml", "azure-pipelines.yml"],
         "check_absence": True,
         "title": "Automatisk sårbarhetsscanning kan saknas",
-        "description": "Ingen CI/CD-integration för sårbarhetsscanning. NIS2 art. 21.2(f) kräver säkerhetstestning.",
+        "description": "Ingen CI/CD-integration för sårbarhetsscanning. Cybersäkerhetslagen kräver säkerhetstestning.",
         "severity": Severity.MEDIUM,
-        "requirement_id": "NIS2-21.2f",
+        "requirement_id": "CSL-11",
         "requirement_name": "Säkerhetstestning",
     },
 }
 
-# MSB-specifika kontroller
-MSB_CHECKS = {
+# MCF-specifika kontroller (Myndigheten för civilt försvar, f.d. MSB)
+MCF_CHECKS = {
     "security_documentation": {
         "patterns": [
             r"SECURITY\.md",
@@ -197,9 +199,9 @@ MSB_CHECKS = {
         "files": ["*.md", "docs/*"],
         "check_absence": True,
         "title": "Säkerhetsdokumentation kan saknas",
-        "description": "Ingen SECURITY.md eller säkerhetspolicy hittad. MSB rekommenderar dokumenterat säkerhetsarbete.",
+        "description": "Ingen SECURITY.md eller säkerhetspolicy hittad. MCF rekommenderar dokumenterat säkerhetsarbete.",
         "severity": Severity.LOW,
-        "requirement_id": "MSB-1",
+        "requirement_id": "MCF-1",
         "requirement_name": "Systematiskt informationssäkerhetsarbete",
     },
     "network_segmentation": {
@@ -213,9 +215,9 @@ MSB_CHECKS = {
         "files": ["*.tf", "*.yaml", "*.yml", "*.json"],
         "check_absence": True,
         "title": "Nätverkssegmentering kan vara bristfällig",
-        "description": "Ingen synlig nätverkssegmentering i IaC-filer. MSB rekommenderar nätverksuppdelning.",
+        "description": "Ingen synlig nätverkssegmentering i IaC-filer. MCF rekommenderar nätverksuppdelning.",
         "severity": Severity.LOW,
-        "requirement_id": "MSB-2",
+        "requirement_id": "MCF-2",
         "requirement_name": "Tekniska säkerhetsåtgärder",
     },
 }
@@ -226,11 +228,12 @@ class ComplianceCheckerAgent(BaseAgent):
     Agent för compliance-granskning mot EU- och svenska standarder.
 
     Kontrollerar kod och konfiguration mot:
-    - GDPR
-    - NIS2
-    - OWASP Top 10
-    - ISO 27001
-    - MSB Riktlinjer
+    - GDPR (2016/679)
+    - NIS2 / Cybersäkerhetslagen (SFS 2025:1506)
+    - OWASP Top 10 (2025)
+    - ISO 27001 (2022)
+    - MCF Riktlinjer (f.d. MSB)
+    - EU Cyber Resilience Act (2024/2847)
     """
 
     def __init__(self, config: Optional[ScanConfig] = None):
@@ -272,8 +275,8 @@ class ComplianceCheckerAgent(BaseAgent):
         if "nis2" in frameworks or "all" in frameworks:
             await self._check_nis2_compliance(code_content, target_path)
 
-        if "msb" in frameworks or "all" in frameworks:
-            await self._check_msb_compliance(code_content, target_path)
+        if "mcf" in frameworks or "msb" in frameworks or "all" in frameworks:
+            await self._check_mcf_compliance(code_content, target_path)
 
         # Lägg till compliance checks till resultatet
         result.compliance_checks = self.compliance_checks.copy()
@@ -431,15 +434,15 @@ class ComplianceCheckerAgent(BaseAgent):
 
             self.compliance_checks.append(compliance_check)
 
-    async def _check_msb_compliance(
+    async def _check_mcf_compliance(
         self,
         code_content: dict[str, str],
         target_path: Path,
     ) -> None:
-        """Kontrollera MSB-riktlinjer."""
-        self.log("Kontrollerar MSB-riktlinjer...")
+        """Kontrollera MCF-riktlinjer (f.d. MSB)."""
+        self.log("Kontrollerar MCF-riktlinjer...")
 
-        for check_name, check_config in MSB_CHECKS.items():
+        for check_name, check_config in MCF_CHECKS.items():
             found = False
 
             for rel_path, content in code_content.items():
@@ -474,7 +477,7 @@ class ComplianceCheckerAgent(BaseAgent):
                 status = ComplianceStatus.NON_COMPLIANT if found else ComplianceStatus.COMPLIANT
 
             compliance_check = ComplianceCheck(
-                framework="MSB",
+                framework="MCF",
                 requirement_id=check_config["requirement_id"],
                 requirement_name=check_config["requirement_name"],
                 status=status,
@@ -487,8 +490,8 @@ class ComplianceCheckerAgent(BaseAgent):
                     description=check_config["description"],
                     severity=check_config["severity"],
                     category=FindingCategory.CONFIGURATION,
-                    remediation=self._get_msb_remediation(check_name),
-                    compliance_frameworks=["msb"],
+                    remediation=self._get_mcf_remediation(check_name),
+                    compliance_frameworks=["mcf"],
                     metadata={"check_name": check_name},
                 )
                 self.add_finding(finding)
@@ -538,13 +541,13 @@ class ComplianceCheckerAgent(BaseAgent):
         return remediations.get(check_name, "Granska och åtgärda enligt GDPR-krav.")
 
     def _get_nis2_remediation(self, check_name: str) -> str:
-        """Hämta NIS2-åtgärdsrekommendation."""
+        """Hämta NIS2/Cybersäkerhetslagen-åtgärdsrekommendation."""
         remediations = {
             "incident_logging": (
                 "1. Implementera centraliserad loggning (ELK, Splunk, etc.)\n"
                 "2. Skapa incident response-plan\n"
                 "3. Implementera alerting för säkerhetshändelser\n"
-                "4. Dokumentera rapporteringsrutiner till MSB"
+                "4. Dokumentera rapporteringsrutiner till MCF (CERT-SE)"
             ),
             "backup_mechanism": (
                 "1. Implementera automatiska backups\n"
@@ -571,10 +574,10 @@ class ComplianceCheckerAgent(BaseAgent):
                 "4. Dokumentera sårbarhetshanteringsprocess"
             ),
         }
-        return remediations.get(check_name, "Granska och åtgärda enligt NIS2-krav.")
+        return remediations.get(check_name, "Granska och åtgärda enligt Cybersäkerhetslagen/NIS2-krav.")
 
-    def _get_msb_remediation(self, check_name: str) -> str:
-        """Hämta MSB-åtgärdsrekommendation."""
+    def _get_mcf_remediation(self, check_name: str) -> str:
+        """Hämta MCF-åtgärdsrekommendation (f.d. MSB)."""
         remediations = {
             "security_documentation": (
                 "1. Skapa SECURITY.md med ansvarsfull disclosure-policy\n"
@@ -589,4 +592,4 @@ class ComplianceCheckerAgent(BaseAgent):
                 "4. Dokumentera nätverksarkitektur"
             ),
         }
-        return remediations.get(check_name, "Granska och åtgärda enligt MSB-riktlinjer.")
+        return remediations.get(check_name, "Granska och åtgärda enligt MCF-riktlinjer.")
