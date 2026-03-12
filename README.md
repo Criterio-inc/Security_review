@@ -4,61 +4,148 @@ En omfattande säkerhetsgranskningsverktygslåda för kod, repositories och webb
 
 ---
 
-## Snabbstart för nybörjare (Claude Code Desktop)
+## Hur fungerar det? Två sätt att använda
 
-### 🔧 Första gången - Installation (gör endast EN gång)
+Security Toolkit kan användas på **två sätt** som kompletterar varandra:
 
-**Steg 1:** Ladda ner Security Toolkit
+### 1. Fristående CLI-verktyg (utan agent)
+
+Du kör `security-scan` direkt i terminalen mot din kodbas eller webbapplikation. Perfekt för utvecklare som vill integrera i sitt arbetsflöde eller CI/CD-pipeline.
+
+```
+Du (utvecklare)
+  │
+  ▼
+security-scan repo ./mitt-projekt
+  │
+  ├── SAST (kodanalys)
+  ├── Secrets (hemligheter)
+  ├── Dependencies (sårbara beroenden)
+  └── Compliance (NIS2, GDPR, MCF...)
+  │
+  ▼
+Rapport (JSON/HTML/Markdown/SARIF)
+```
+
+### 2. Med Claude Code Desktop (agent-assisterad)
+
+Du öppnar ditt projekt i Claude Code och ber Claude skanna det. Claude kör verktyget, tolkar resultaten, förklarar dem på svenska och kan till och med fixa problemen direkt.
+
+```
+Du (i Claude Code Desktop)
+  │
+  "Skanna detta repo med security-scan"
+  │
+  ▼
+Claude Code (agent)
+  │
+  ├── Kör security-scan automatiskt
+  ├── Tolkar resultaten
+  ├── Förklarar vad det betyder
+  └── Kan fixa problemen direkt i koden
+  │
+  ▼
+Fixad och säkrare kod
+```
+
+### Vad är skillnaden?
+
+| | Fristående CLI | Med Claude Code |
+|---|---|---|
+| **Vem kör?** | Du, i terminalen | Claude kör åt dig |
+| **Resultat** | Rapport (fil) | Förklaring + automatiska fixar |
+| **Bäst för** | CI/CD, rutinskanningar | Förstå problem, snabba fixar |
+| **Kräver** | Python + pip install | Claude Code Desktop |
+
+**Båda sätten kör exakt samma skanningsmotor** - det är bara gränssnittet som skiljer.
+
+---
+
+## Snabbstart
+
+### Alt A: Fristående (terminal)
+
+```bash
+# Installera
+git clone https://github.com/Criterio-inc/Security_review.git
+cd Security_review && pip install -e .
+
+# Skanna
+security-scan repo /path/to/your/project
+security-scan web https://your-app.com
+security-scan interactive  # guidad genomgång
+```
+
+### Alt B: Med Claude Code Desktop
+
+**Steg 1:** Installera (en gång)
 ```bash
 git clone https://github.com/Criterio-inc/Security_review.git
 ```
-
-**Steg 2:** Öppna Claude Code Desktop och be Claude installera:
+Öppna Claude Code Desktop:
 ```
 Installera Security Toolkit från ~/Security_review
 ```
 
-**Klart!** Nu är verktyget installerat permanent på din dator.
+**Steg 2:** Skanna (när som helst)
+
+Öppna valfritt projekt i Claude Code Desktop och skriv:
+```
+"Skanna detta repo med security-scan"
+"Gör en GDPR-granskning"
+"Hitta läckta API-nycklar i koden"
+"Kör security-scan interactive"
+```
 
 ---
 
-### 🔍 Skanna valfritt projekt (när som helst efteråt)
+## Arkitektur: Tvåfas-orkestrering
 
-**Steg 1:** Öppna Claude Code Desktop
+Verktyget kör agenterna i **två faser** för att compliance-rapporteringen ska vara så komplett som möjligt:
 
-**Steg 2:** Välj det projekt/repo du vill granska
-
-**Steg 3:** Skriv i chatten:
 ```
-Skanna detta repo med security-scan
+┌─ Fas 1 (parallellt) ──────────────────────────────────┐
+│                                                        │
+│  SAST             Secrets          Dependencies        │
+│  (kodanalys)      (hemligheter)    (beroenden)         │
+│                                                        │
+│  Hittar: SQL injection, XSS, saknad rate limiting,     │
+│  CSRF-problem, webhook utan HMAC, input-validering...  │
+│                                                        │
+└───────────────────────┬────────────────────────────────┘
+                        │ findings matas vidare
+                        ▼
+┌─ Fas 2 ───────────────────────────────────────────────┐
+│                                                        │
+│  Compliance (NIS2, GDPR, MCF)                         │
+│                                                        │
+│  Egna mönsterkontroller + berikas med findings         │
+│  från fas 1 via enrich_with_findings()                 │
+│                                                        │
+│  Resultat: Komplett compliance-rapport som inkluderar   │
+│  både compliance-agentens egna kontroller OCH           │
+│  säkerhetsproblem från SAST/DAST                       │
+│                                                        │
+└────────────────────────────────────────────────────────┘
 ```
 
-**Det är allt!** Du behöver aldrig installera om. Välj bara nytt projekt och skanna.
-
-### Exempel på kommandon:
-```
-"Skanna detta repo med security-scan"
-"Gör en säkerhetsgranskning av projektet"
-"Kör security-scan interactive"
-"Hitta läckta API-nycklar i koden"
-"Gör en GDPR-granskning"
-```
+Detta innebär att NIS2-compliance-rapporten automatiskt inkluderar fynd som saknad rate limiting eller CSRF-problem som hittats av kodscannern, istället för att bara kontrollera compliance-mönster isolerat.
 
 ---
 
 ## Funktioner
 
-### Agenter och Skanningstyper
+### Agenter och skanningstyper
 
 | Agent | Typ | Beskrivning |
 |-------|-----|-------------|
-| **CodeScannerAgent** | SAST | Statisk kodanalys för säkerhetsproblem |
-| **WebScannerAgent** | DAST | Dynamisk webbapplikationstestning |
-| **DependencyScannerAgent** | SCA | Sårbarhetsdetektering i beroenden |
-| **SecretScannerAgent** | Secret | Detektering av exponerade hemligheter |
-| **ComplianceCheckerAgent** | Compliance | Granskning mot säkerhetsstandarder |
+| **CodeScannerAgent** | SAST | Statisk kodanalys - hittar sårbarheter i källkod |
+| **WebScannerAgent** | DAST | Dynamisk testning - testar en körande webbapp |
+| **DependencyScannerAgent** | SCA | Kontrollerar beroenden mot kända sårbarheter |
+| **SecretScannerAgent** | Secret | Hittar API-nycklar, lösenord och hemligheter i kod |
+| **ComplianceCheckerAgent** | Compliance | Granskar mot NIS2, GDPR, MCF m.fl. + berikas med findings |
 
-### Stödda Compliance-ramverk
+### Stödda compliance-ramverk
 
 - **GDPR** (2016/679) - EU:s dataskyddsförordning
 - **NIS2 / Cybersäkerhetslagen** (SFS 2025:1506) - Sveriges implementering av NIS2
@@ -74,7 +161,7 @@ Se [COMPLIANCE_VERSIONS.md](COMPLIANCE_VERSIONS.md) för detaljerad versionsinfo
 ```bash
 # Klona repositoryt
 git clone https://github.com/Criterio-inc/Security_review.git
-cd security-toolkit
+cd Security_review
 
 # Installera med pip
 pip install -e .
@@ -82,49 +169,6 @@ pip install -e .
 # Eller med utvecklingsberoenden
 pip install -e ".[dev]"
 ```
-
-## Användning
-
-### Interaktivt läge (rekommenderas för nybörjare)
-
-```bash
-security-scan interactive
-```
-
-Detta startar en guidad genomgång där du svarar på frågor om:
-1. Vad ska skannas (kod, webb, eller båda)
-2. Vilka skanningstyper
-3. Vilka compliance-ramverk
-4. Allvarlighetsgrad
-5. Rapportformat
-
----
-
-### Använda med Claude Code Desktop
-
-**Metod 1: Be Claude köra skanningen direkt**
-```
-"Kör en säkerhetsskanning på detta repository"
-"Skanna min kod efter säkerhetsproblem"
-"Gör en GDPR-compliance-granskning av projektet"
-```
-
-**Metod 2: Installera och kör själv**
-```
-"Installera security-toolkit och kör security-scan repo ."
-```
-
-**Metod 3: Interaktiv skanning via Claude**
-```
-"Kör security-scan interactive och hjälp mig välja rätt inställningar"
-```
-
-**Tips för Claude Code:**
-- Claude kan tolka resultaten och förklara vad de betyder
-- Be Claude föreslå åtgärder för varje fynd
-- Claude kan automatiskt fixa enkla säkerhetsproblem
-
----
 
 ### CLI-kommandon
 
@@ -240,6 +284,10 @@ Detekterar säkerhetsproblem i källkod:
 - Server-Side Request Forgery (CWE-918)
 - Hårdkodade credentials (CWE-798)
 - Bristande loggning (CWE-778)
+- Saknad rate limiting (CWE-770) - auth-endpoints utan begränsning
+- Saknat CSRF-skydd (CWE-352) - POST-endpoints utan CSRF-tokens
+- Webhook utan HMAC-verifiering (CWE-345) - webhook-endpoints utan signaturkontroll
+- Otillräcklig input-validering (CWE-20) - direkt användning av request-data utan sanitering
 
 ### DAST (Dynamic Application Security Testing)
 
@@ -252,6 +300,8 @@ Testar webbapplikationer i runtime:
 - Directory listing
 - Information disclosure
 - Exponerade känsliga filer (.git, .env, etc.)
+- CSRF-skydd - kontrollerar formulär efter CSRF-tokens och SameSite-cookies
+- Rate limiting - kontrollerar rate limit-headers och testar auth-endpoints
 
 ### Secret Detection
 
@@ -292,14 +342,20 @@ Granskar kod mot säkerhetsstandarder:
 - Kryptering av lagrad data
 - Dataportabilitet
 
-**NIS2:**
-- Incidenthantering
-- Backup-mekanismer
-- Åtkomstkontroll
-- Multifaktorautentisering
-- Automatisk sårbarhetsscanning
+**NIS2 / Cybersäkerhetslagen:**
+- Incidenthantering (CSL-7)
+- Backup-mekanismer (CSL-8)
+- Åtkomstkontroll (CSL-9)
+- Multifaktorautentisering (CSL-10)
+- Automatisk sårbarhetsscanning (CSL-11)
+- Rate limiting / skydd mot överbelastning (CSL-12)
+- CSRF-skydd (CSL-13)
+- Webhook-signaturverifiering / HMAC (CSL-14)
+- Input-validering (CSL-15)
 
-**MSB:**
+NIS2-compliance berikas automatiskt med findings från SAST/DAST (se Arkitektur ovan).
+
+**MCF (f.d. MSB):**
 - Säkerhetsdokumentation
 - Nätverkssegmentering
 
