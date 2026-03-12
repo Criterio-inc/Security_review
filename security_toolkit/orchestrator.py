@@ -54,39 +54,51 @@ class SecurityOrchestrator:
             raise ValueError(f"Sökvägen existerar inte: {path}")
 
         # Skapa agenterna
-        agents = []
         scan_types = self.config.scan_types
+
+        # Fas 1: Skanningsagenter (SAST, Secrets, Dependencies)
+        phase1_agents = []
 
         if "all" in scan_types or "code" in scan_types or "sast" in scan_types:
             agent = CodeScannerAgent(self.config)
             agent.load_ignore_file(target_path)
-            agents.append(("SAST", agent))
+            phase1_agents.append(("SAST", agent))
 
         if "all" in scan_types or "secrets" in scan_types:
             agent = SecretScannerAgent(self.config)
             agent.load_ignore_file(target_path)
-            agents.append(("Secrets", agent))
+            phase1_agents.append(("Secrets", agent))
 
         if "all" in scan_types or "dependencies" in scan_types or "sca" in scan_types:
             agent = DependencyScannerAgent(self.config)
             agent.load_ignore_file(target_path)
-            agents.append(("Dependencies", agent))
+            phase1_agents.append(("Dependencies", agent))
 
+        # Kör fas 1 parallellt
+        if phase1_agents:
+            tasks = [self._run_agent(name, agent, str(target_path)) for name, agent in phase1_agents]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for result in results:
+                if isinstance(result, Exception):
+                    print(f"Agent error: {result}")
+                elif result is not None:
+                    self.results.append(result)
+
+        # Fas 2: Compliance-agent (berikas med findings från fas 1)
         if "all" in scan_types or "compliance" in scan_types:
-            agent = ComplianceCheckerAgent(self.config)
-            agent.load_ignore_file(target_path)
-            agents.append(("Compliance", agent))
+            compliance_agent = ComplianceCheckerAgent(self.config)
+            compliance_agent.load_ignore_file(target_path)
 
-        # Kör agenter parallellt
-        tasks = [self._run_agent(name, agent, str(target_path)) for name, agent in agents]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+            # Mata in alla findings från fas 1 till compliance-agenten
+            all_phase1_findings = []
+            for result in self.results:
+                all_phase1_findings.extend(result.findings)
+            compliance_agent.enrich_with_findings(all_phase1_findings)
 
-        # Samla resultat
-        for result in results:
-            if isinstance(result, Exception):
-                print(f"Agent error: {result}")
-            elif result is not None:
-                self.results.append(result)
+            compliance_result = await self._run_agent("Compliance", compliance_agent, str(target_path))
+            if compliance_result:
+                self.results.append(compliance_result)
 
         return self.results
 
