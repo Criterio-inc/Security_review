@@ -186,6 +186,78 @@ NIS2_CHECKS = {
         "requirement_id": "CSL-11",
         "requirement_name": "Säkerhetstestning",
     },
+    "rate_limiting": {
+        "patterns": [
+            r"rate.?limit",
+            r"throttle",
+            r"RateLimit",
+            r"slowapi",
+            r"flask.?limiter",
+            r"express.?rate.?limit",
+            r"django.?ratelimit",
+            r"throttle_classes",
+        ],
+        "check_absence": True,
+        "title": "Rate limiting kan saknas",
+        "description": "Ingen synlig rate limiting-implementation. Cybersäkerhetslagen kräver skydd mot överbelastningsattacker och brute force.",
+        "severity": Severity.HIGH,
+        "requirement_id": "CSL-12",
+        "requirement_name": "Skydd mot överbelastning",
+    },
+    "csrf_protection": {
+        "patterns": [
+            r"csrf",
+            r"CSRFProtect",
+            r"CsrfViewMiddleware",
+            r"csurf",
+            r"anti.?forgery",
+            r"AntiForgeryToken",
+            r"csrfmiddlewaretoken",
+        ],
+        "check_absence": True,
+        "title": "CSRF-skydd kan saknas",
+        "description": "Ingen synlig CSRF-implementation. Cybersäkerhetslagen kräver skydd mot cross-site request forgery.",
+        "severity": Severity.HIGH,
+        "requirement_id": "CSL-13",
+        "requirement_name": "Skydd mot CSRF-attacker",
+    },
+    "webhook_verification": {
+        "patterns": [
+            r"hmac",
+            r"webhook.*sign",
+            r"signature.*verif",
+            r"X-Hub-Signature",
+            r"verify_signature",
+            r"compute_hash",
+        ],
+        "check_absence": True,
+        "title": "Webhook-signaturverifiering kan saknas",
+        "description": "Ingen synlig HMAC/signaturverifiering för webhooks. Cybersäkerhetslagen kräver verifiering av inkommande data.",
+        "severity": Severity.MEDIUM,
+        "requirement_id": "CSL-14",
+        "requirement_name": "Verifiering av extern input",
+    },
+    "input_validation": {
+        "patterns": [
+            r"validate",
+            r"sanitize",
+            r"Schema\s*\(",
+            r"Pydantic",
+            r"BaseModel",
+            r"Joi\.",
+            r"Zod\.",
+            r"Marshmallow",
+            r"WTForm",
+            r"class.*Serializer",
+            r"express-validator",
+        ],
+        "check_absence": True,
+        "title": "Systematisk input-validering kan saknas",
+        "description": "Ingen synlig input-validering med schema eller valideringsramverk. Cybersäkerhetslagen kräver robust inputhantering.",
+        "severity": Severity.HIGH,
+        "requirement_id": "CSL-15",
+        "requirement_name": "Input-validering",
+    },
 }
 
 # MCF-specifika kontroller (Myndigheten för civilt försvar, f.d. MSB)
@@ -239,10 +311,21 @@ class ComplianceCheckerAgent(BaseAgent):
     def __init__(self, config: Optional[ScanConfig] = None):
         super().__init__(config)
         self.compliance_checks: list[ComplianceCheck] = []
+        self._external_findings: list[Finding] = []
 
     @property
     def scan_type(self) -> str:
         return "Compliance"
+
+    def enrich_with_findings(self, findings: list[Finding]) -> None:
+        """
+        Ta emot findings från andra agenter (SAST, DAST, etc.)
+        för att berika compliance-rapporteringen.
+
+        Args:
+            findings: Lista med findings från andra agenter.
+        """
+        self._external_findings = findings
 
     async def scan(self, target: str) -> ScanResult:
         """
@@ -277,6 +360,10 @@ class ComplianceCheckerAgent(BaseAgent):
 
         if "mcf" in frameworks or "msb" in frameworks or "all" in frameworks:
             await self._check_mcf_compliance(code_content, target_path)
+
+        # Berika NIS2-compliance med findings från andra agenter
+        if self._external_findings and ("nis2" in frameworks or "all" in frameworks):
+            self._enrich_nis2_from_external_findings()
 
         # Lägg till compliance checks till resultatet
         result.compliance_checks = self.compliance_checks.copy()
@@ -499,6 +586,75 @@ class ComplianceCheckerAgent(BaseAgent):
 
             self.compliance_checks.append(compliance_check)
 
+    # Mappning från SAST/DAST-regelnamn till NIS2-krav
+    _FINDING_TO_NIS2_MAP = {
+        "missing_rate_limiting": {
+            "requirement_id": "CSL-12",
+            "requirement_name": "Skydd mot överbelastning",
+        },
+        "missing_csrf_protection": {
+            "requirement_id": "CSL-13",
+            "requirement_name": "Skydd mot CSRF-attacker",
+        },
+        "missing_webhook_verification": {
+            "requirement_id": "CSL-14",
+            "requirement_name": "Verifiering av extern input",
+        },
+        "missing_input_sanitization": {
+            "requirement_id": "CSL-15",
+            "requirement_name": "Input-validering",
+        },
+    }
+
+    def _enrich_nis2_from_external_findings(self) -> None:
+        """
+        Berika NIS2-compliance-resultat med findings från SAST/DAST-agenter.
+
+        Findings som taggar sig med 'nis2' i compliance_frameworks och matchar
+        kända regelnamn mappas till NIS2 ComplianceCheck-objekt.
+        """
+        # Samla NIS2-relevanta findings grupperade per regelnamn
+        nis2_findings: dict[str, list[Finding]] = {}
+
+        for finding in self._external_findings:
+            if "nis2" not in [fw.lower() for fw in finding.compliance_frameworks]:
+                continue
+
+            rule_name = finding.metadata.get("rule", "")
+            if rule_name in self._FINDING_TO_NIS2_MAP:
+                nis2_findings.setdefault(rule_name, []).append(finding)
+
+        # Skapa ComplianceCheck-objekt för varje grupp
+        for rule_name, findings in nis2_findings.items():
+            mapping = self._FINDING_TO_NIS2_MAP[rule_name]
+
+            # Kontrollera om vi redan har en check för detta krav
+            existing = any(
+                c.requirement_id == mapping["requirement_id"]
+                for c in self.compliance_checks
+            )
+            if existing:
+                # Uppdatera befintlig check med externa findings
+                for check in self.compliance_checks:
+                    if check.requirement_id == mapping["requirement_id"]:
+                        check.findings.extend(findings)
+                        if check.status == ComplianceStatus.COMPLIANT:
+                            check.status = ComplianceStatus.PARTIAL
+                            check.notes = f"Kodanalys hittade {len(findings)} relaterade varningar från SAST/DAST."
+                        break
+            else:
+                compliance_check = ComplianceCheck(
+                    framework="NIS2",
+                    requirement_id=mapping["requirement_id"],
+                    requirement_name=mapping["requirement_name"],
+                    status=ComplianceStatus.NON_COMPLIANT,
+                    findings=findings,
+                    notes=f"Identifierat via SAST/DAST-skanning: {len(findings)} fynd.",
+                )
+                self.compliance_checks.append(compliance_check)
+
+        self.log(f"Berikade NIS2-compliance med {sum(len(f) for f in nis2_findings.values())} externa findings")
+
     def _matches_pattern(self, path: str, pattern: str) -> bool:
         """Kontrollera om en sökväg matchar ett mönster."""
         from fnmatch import fnmatch
@@ -572,6 +728,30 @@ class ComplianceCheckerAgent(BaseAgent):
                 "2. Implementera SAST-scanning\n"
                 "3. Schemalägg regelbundna säkerhetsskanningar\n"
                 "4. Dokumentera sårbarhetshanteringsprocess"
+            ),
+            "rate_limiting": (
+                "1. Implementera rate limiting med flask-limiter, express-rate-limit, django-ratelimit eller liknande\n"
+                "2. Begränsa auth-endpoints till max 5-10 försök per minut\n"
+                "3. Använd en API-gateway eller reverse proxy med inbyggd rate limiting\n"
+                "4. Implementera progressiv backoff vid upprepade misslyckade försök"
+            ),
+            "csrf_protection": (
+                "1. Aktivera ramverkets inbyggda CSRF-skydd (Django CsrfViewMiddleware, Flask-WTF CSRFProtect, csurf)\n"
+                "2. Inkludera CSRF-tokens i alla formulär och state-changing requests\n"
+                "3. Sätt SameSite=Strict på sessions-cookies\n"
+                "4. Verifiera Origin/Referer-headers på server-sidan"
+            ),
+            "webhook_verification": (
+                "1. Implementera HMAC-SHA256 signaturverifiering för alla webhook-endpoints\n"
+                "2. Jämför X-Hub-Signature-256 (eller motsvarande) med beräknad HMAC\n"
+                "3. Använd en delad hemlighet som lagras säkert (miljövariabel/secrets manager)\n"
+                "4. Returnera 403 vid ogiltig signatur"
+            ),
+            "input_validation": (
+                "1. Implementera schema-validering med Pydantic, Joi, Zod, Marshmallow eller liknande\n"
+                "2. Validera alla request-parametrar mot förväntade typer och format\n"
+                "3. Begränsa stränglängder och numeriska intervall\n"
+                "4. Använd allowlists istället för blocklists där möjligt"
             ),
         }
         return remediations.get(check_name, "Granska och åtgärda enligt Cybersäkerhetslagen/NIS2-krav.")
