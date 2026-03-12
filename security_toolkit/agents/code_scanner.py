@@ -9,6 +9,10 @@ Skannar källkod för säkerhetsproblem som:
 - Osäker kryptografi
 - Hårdkodade hemligheter
 - Osäkra funktioner
+- Saknad rate limiting
+- Saknat CSRF-skydd
+- Webhook-endpoints utan HMAC-verifiering
+- Otillräcklig input-validering
 """
 
 import re
@@ -283,6 +287,95 @@ SECURITY_PATTERNS = {
         "description": "Undantag fångas men ignoreras utan loggning, vilket försvårar felsökning och incidentdetektering.",
         "remediation": "Logga alla undantag med tillräcklig kontextinformation.",
         "frameworks": ["nis2", "owasp_top10"],
+    },
+    "missing_rate_limiting": {
+        "patterns": [
+            # Python/Flask - route utan rate limiting
+            r'@app\.route\s*\(\s*["\']/(login|auth|api|register|reset|forgot)',
+            # Express.js - auth/login-endpoints utan rate limiter
+            r'app\.(post|get)\s*\(\s*["\']/?(login|auth|api/auth|register|reset-password|forgot-password)',
+            # Django - auth views utan throttling
+            r'path\s*\(\s*["\'](login|auth|api/token|register)',
+            # FastAPI - auth endpoints
+            r'@(app|router)\.(post|get)\s*\(\s*["\']/?(login|auth|token|register)',
+            # PHP - login/auth endpoints
+            r'Route::(post|get)\s*\(\s*["\']/?(login|auth|register|reset)',
+        ],
+        "severity": Severity.HIGH,
+        "category": FindingCategory.CONFIGURATION,
+        "cwe_id": "CWE-770",
+        "owasp_id": "A04:2021",
+        "title": "Potentiellt saknad rate limiting på känslig endpoint",
+        "description": "Känsliga endpoints (login, registrering, API) saknar troligen rate limiting, vilket möjliggör brute force-attacker och resursmissbruk.",
+        "remediation": "Implementera rate limiting med t.ex. flask-limiter, express-rate-limit, django-ratelimit, eller en API-gateway. Begränsa till max 5-10 försök per minut för auth-endpoints.",
+        "frameworks": ["owasp_top10", "nis2"],
+    },
+    "missing_csrf_protection": {
+        "patterns": [
+            # Flask - formulär utan CSRF-skydd
+            r'@app\.route\s*\([^)]*methods\s*=\s*\[[^\]]*["\']POST["\']',
+            # Express.js - POST-routes (bör ha csurf)
+            r'app\.post\s*\(\s*["\'][^"\']+["\']\s*,\s*(?!.*csrf)',
+            # Django - csrf_exempt decorator
+            r'@csrf_exempt',
+            # PHP/Laravel - without middleware
+            r'Route::post\s*\([^)]+\)\s*(?!.*->middleware.*csrf)',
+            # HTML-formulär utan CSRF-token
+            r'<form[^>]*method\s*=\s*["\']post["\'][^>]*>(?![\s\S]{0,500}csrf)',
+        ],
+        "severity": Severity.HIGH,
+        "category": FindingCategory.ACCESS_CONTROL,
+        "cwe_id": "CWE-352",
+        "owasp_id": "A01:2021",
+        "title": "Potentiellt saknat CSRF-skydd",
+        "description": "POST-endpoint eller formulär saknar troligen CSRF-skydd, vilket gör det möjligt för angripare att utföra åtgärder i autentiserade användares namn.",
+        "remediation": "Implementera CSRF-tokens i alla formulär och state-changing requests. Använd ramverkets inbyggda CSRF-skydd (t.ex. Flask-WTF CSRFProtect, Django CSRF middleware, csurf för Express).",
+        "frameworks": ["owasp_top10", "nis2"],
+    },
+    "missing_webhook_verification": {
+        "patterns": [
+            # Webhook-endpoints utan HMAC-verifiering
+            r'@app\.route\s*\(\s*["\'][^"\']*webhook[^"\']*["\']',
+            r'app\.(post|get)\s*\(\s*["\'][^"\']*webhook[^"\']*["\']',
+            r'@(app|router)\.(post|get)\s*\(\s*["\'][^"\']*webhook[^"\']*["\']',
+            r'path\s*\(\s*["\'][^"\']*webhook[^"\']*["\']',
+            r'Route::(post|get)\s*\(\s*["\'][^"\']*webhook[^"\']*["\']',
+            # Generella callback-/hook-endpoints
+            r'@app\.route\s*\(\s*["\'][^"\']*callback[^"\']*["\']',
+            r'app\.post\s*\(\s*["\'][^"\']*hook[^"\']*["\']',
+        ],
+        "severity": Severity.HIGH,
+        "category": FindingCategory.AUTHENTICATION,
+        "cwe_id": "CWE-345",
+        "owasp_id": "A07:2021",
+        "title": "Webhook-endpoint utan signaturverifiering",
+        "description": "Webhook-endpoint upptäckt utan tydlig HMAC-signaturverifiering. Utan verifiering kan angripare fejka webhook-anrop till servern.",
+        "remediation": "Verifiera alla inkommande webhooks med HMAC-SHA256 signatur. Jämför signaturen i headern (t.ex. X-Hub-Signature-256) med en beräknad HMAC av request body och en delad hemlighet.",
+        "frameworks": ["owasp_top10", "nis2"],
+    },
+    "missing_input_sanitization": {
+        "patterns": [
+            # Direkt användning av request-data utan validering
+            # Python/Flask
+            r'request\.(form|args|json)\s*\[\s*["\'][^"\']+["\']\s*\]',
+            r'request\.get_json\s*\(\)',
+            # Express.js
+            r'req\.(body|query|params)\s*\.\s*\w+',
+            r'req\.(body|query|params)\s*\[\s*["\']',
+            # PHP
+            r'\$_(GET|POST|REQUEST|COOKIE)\s*\[\s*["\']',
+            # Django
+            r'request\.(GET|POST|data)\s*\[\s*["\']',
+            r'request\.(GET|POST|data)\.get\s*\(',
+        ],
+        "severity": Severity.MEDIUM,
+        "category": FindingCategory.INJECTION,
+        "cwe_id": "CWE-20",
+        "owasp_id": "A03:2021",
+        "title": "Användarinput utan validering/sanitering",
+        "description": "Användarinput hämtas direkt utan synlig validering eller sanitering. All input bör valideras mot förväntade typer, längder och format.",
+        "remediation": "Validera och sanitera ALL användarinput. Använd schema-validering (t.ex. Pydantic, Joi, Marshmallow, Zod) för att säkerställa att indata matchar förväntade format. Begränsa stränglängder och använd allowlists där möjligt.",
+        "frameworks": ["owasp_top10", "nis2", "gdpr"],
     },
 }
 

@@ -8,6 +8,8 @@ Skannar webbapplikationer för säkerhetsproblem som:
 - SSL/TLS-konfiguration
 - Information disclosure
 - Öppna redirects
+- Saknat CSRF-skydd
+- Saknad rate limiting
 """
 
 import asyncio
@@ -142,6 +144,8 @@ class WebScannerAgent(BaseAgent):
             await self._check_information_disclosure(target)
             await self._check_common_vulnerabilities(target)
             await self._check_sensitive_files(target)
+            await self._check_csrf_protection(target)
+            await self._check_rate_limiting(target)
 
         return self._finalize_scan_result(result)
 
@@ -422,3 +426,139 @@ class WebScannerAgent(BaseAgent):
 
             # Liten fördröjning för att inte överbelasta servern
             await asyncio.sleep(0.1)
+
+    async def _check_csrf_protection(self, url: str) -> None:
+        """Kontrollera CSRF-skydd genom att undersöka formulär och cookies."""
+        try:
+            response = await self.client.get(url)
+            content = response.text
+
+            # Kontrollera om det finns formulär med POST-metod
+            forms = re.findall(
+                r'<form[^>]*method\s*=\s*["\']post["\'][^>]*>[\s\S]*?</form>',
+                content,
+                re.IGNORECASE,
+            )
+
+            for form in forms:
+                # Sök efter CSRF-token i formuläret
+                has_csrf = bool(re.search(
+                    r'(csrf|_token|csrfmiddlewaretoken|_csrf_token|authenticity_token)',
+                    form,
+                    re.IGNORECASE,
+                ))
+
+                if not has_csrf:
+                    self.add_finding(Finding(
+                        id=str(uuid.uuid4()),
+                        title="Formulär utan CSRF-token",
+                        description="Ett POST-formulär hittades utan synlig CSRF-token, vilket kan möjliggöra cross-site request forgery-attacker.",
+                        severity=Severity.HIGH,
+                        category=FindingCategory.ACCESS_CONTROL,
+                        url=url,
+                        cwe_id="CWE-352",
+                        owasp_id="A01:2021",
+                        remediation="Lägg till CSRF-tokens i alla formulär. Använd ramverkets inbyggda CSRF-skydd och sätt SameSite=Strict på cookies.",
+                        compliance_frameworks=["owasp_top10", "nis2"],
+                    ))
+                    break  # Rapportera en gång per sida
+
+            # Kontrollera SameSite-cookie som CSRF-skydd
+            cookies_without_samesite = []
+            for cookie in response.cookies.jar:
+                samesite = cookie.get_nonstandard_attr("SameSite")
+                if not samesite or samesite.lower() == "none":
+                    cookies_without_samesite.append(cookie.name)
+
+            if cookies_without_samesite and not forms:
+                # Om det finns sessions-cookies utan SameSite, varna ändå
+                session_cookies = [
+                    c for c in cookies_without_samesite
+                    if any(s in c.lower() for s in ["session", "sid", "auth", "token"])
+                ]
+                if session_cookies:
+                    self.add_finding(Finding(
+                        id=str(uuid.uuid4()),
+                        title="Sessions-cookies saknar SameSite-attribut",
+                        description=f"Sessions-cookies ({', '.join(session_cookies)}) saknar SameSite-attribut, vilket ger svagare CSRF-skydd.",
+                        severity=Severity.MEDIUM,
+                        category=FindingCategory.ACCESS_CONTROL,
+                        url=url,
+                        cwe_id="CWE-352",
+                        owasp_id="A01:2021",
+                        remediation="Sätt SameSite=Strict eller SameSite=Lax på alla sessions-cookies.",
+                        compliance_frameworks=["owasp_top10", "nis2"],
+                    ))
+
+        except httpx.RequestError as e:
+            self.log(f"Kunde inte kontrollera CSRF-skydd: {e}", "error")
+
+    async def _check_rate_limiting(self, url: str) -> None:
+        """Kontrollera om rate limiting är implementerat via headers."""
+        try:
+            response = await self.client.get(url)
+            headers = {k.lower(): v for k, v in response.headers.items()}
+
+            # Vanliga rate limiting-headers
+            rate_limit_headers = [
+                "x-ratelimit-limit",
+                "x-rate-limit-limit",
+                "ratelimit-limit",
+                "x-ratelimit-remaining",
+                "x-rate-limit-remaining",
+                "ratelimit-remaining",
+                "retry-after",
+                "x-ratelimit-reset",
+                "ratelimit-reset",
+            ]
+
+            has_rate_limiting = any(h in headers for h in rate_limit_headers)
+
+            if not has_rate_limiting:
+                self.add_finding(Finding(
+                    id=str(uuid.uuid4()),
+                    title="Inga rate limiting-headers upptäckta",
+                    description="Webbapplikationen verkar sakna rate limiting. Utan rate limiting kan angripare utföra brute force-attacker, credential stuffing och överbelasta servern.",
+                    severity=Severity.MEDIUM,
+                    category=FindingCategory.CONFIGURATION,
+                    url=url,
+                    cwe_id="CWE-770",
+                    owasp_id="A04:2021",
+                    remediation="Implementera rate limiting med t.ex. en reverse proxy (Nginx limit_req), API-gateway, eller applikationsmiddleware. Exponera rate limit-headers (X-RateLimit-Limit, X-RateLimit-Remaining) för klienter.",
+                    compliance_frameworks=["owasp_top10", "nis2"],
+                ))
+
+            # Testa specifikt auth-endpoints om de finns
+            auth_paths = ["/login", "/auth", "/api/auth/login", "/api/token"]
+            parsed = urlparse(url)
+            base_url = f"{parsed.scheme}://{parsed.netloc}"
+
+            for path in auth_paths:
+                try:
+                    test_url = urljoin(base_url, path)
+                    auth_response = await self.client.get(test_url)
+
+                    # Om endpoint existerar (inte 404), kontrollera headers
+                    if auth_response.status_code != 404:
+                        auth_headers = {k.lower(): v for k, v in auth_response.headers.items()}
+                        auth_has_rate_limit = any(h in auth_headers for h in rate_limit_headers)
+
+                        if not auth_has_rate_limit:
+                            self.add_finding(Finding(
+                                id=str(uuid.uuid4()),
+                                title=f"Auth-endpoint saknar rate limiting: {path}",
+                                description=f"Autentiserings-endpoint {path} verkar sakna rate limiting, vilket möjliggör brute force-attacker mot användarkonton.",
+                                severity=Severity.HIGH,
+                                category=FindingCategory.CONFIGURATION,
+                                url=test_url,
+                                cwe_id="CWE-307",
+                                owasp_id="A07:2021",
+                                remediation="Implementera strikt rate limiting på auth-endpoints (max 5-10 försök per minut). Överväg account lockout efter upprepade misslyckade försök.",
+                                compliance_frameworks=["owasp_top10", "nis2"],
+                            ))
+                            break  # Rapportera en gång
+                except httpx.RequestError:
+                    pass
+
+        except httpx.RequestError as e:
+            self.log(f"Kunde inte kontrollera rate limiting: {e}", "error")
